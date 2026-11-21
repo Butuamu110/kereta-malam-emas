@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KERETA MALAM — Curi 3 Peti Emas Gerbong demi Gerbong</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0b1026;
+    font-family: Georgia, 'Times New Roman', serif; color: #f3e9c8; }
+  #app, #app canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  .panel { position: fixed; background: rgba(8, 12, 32, 0.82); border: 1px solid #c9a227;
+    border-radius: 10px; padding: 8px 12px; z-index: 5; }
+  #hud-top { top: 10px; left: 10px; min-width: 300px; }
+  #hud-top .row { font-size: 15px; line-height: 1.45; }
+  #hud-top .gold { color: #ffd34d; }
+  #hud-detect-box { top: 10px; right: 10px; width: 230px; }
+  #hud-detect-box .label { font-size: 13px; letter-spacing: 1px; }
+  #hud-detect-bar { height: 10px; background: #222; border-radius: 5px; margin-top: 4px; overflow: hidden; }
+  #hud-detect { height: 100%; width: 0%; background: #39ff88; transition: width 0.12s; }
+  #hud-tunnel { margin-top: 6px; font-size: 13px; }
+  #hud-guards { top: 118px; left: 10px; font-size: 14px; max-width: 420px; }
+  #hud-guards .st-patrol { color: #cfe8d8; }
+  #hud-guards .st-susp { color: #ffb347; }
+  #hud-guards .st-alert { color: #ff6b6b; font-weight: bold; }
+  #hud-banner { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(8,12,32,0.85);
+    border: 1px solid #ffd34d; color: #ffd34d; padding: 8px 16px; border-radius: 8px;
+    font-size: 16px; z-index: 6; display: none; max-width: 640px; text-align: center; }
+  #hud-controls { bottom: 10px; left: 10px; font-size: 13px; color: #cfe8d8; }
+  #hud-prompt { position: fixed; bottom: 52px; left: 50%; transform: translateX(-50%); background: rgba(8,12,32,0.85);
+    border: 1px solid #39ff88; color: #39ff88; padding: 6px 14px; border-radius: 8px;
+    font-size: 15px; z-index: 6; display: none; }
+  #minimap-wrap { bottom: 10px; right: 10px; padding: 6px; }
+  #minimap-wrap .cap { font-size: 11px; color: #cfe8d8; text-align: center; letter-spacing: 2px; }
+  #tunnel-overlay { position: fixed; inset: 0; background: #000; opacity: 0; pointer-events: none; z-index: 4; }
+  .screen { position: fixed; inset: 0; z-index: 10; display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, rgba(20,16,40,0.42) 0%, rgba(5,8,20,0.72) 100%); }
+  body.screen-on .panel, body.screen-on #hud-banner, body.screen-on #hud-prompt { display: none !important; }
+  .card { max-width: 620px; width: 92%; text-align: center; background: rgba(10,14,34,0.92);
+    border: 2px solid #c9a227; border-radius: 14px; padding: 28px 30px; }
+  .card h1 { font-size: 44px; letter-spacing: 4px; color: #ffd34d; margin-bottom: 4px; }
+  .card h2 { font-size: 19px; color: #f3e9c8; font-weight: normal; margin-bottom: 14px; }
+  .card p { font-size: 15px; line-height: 1.55; color: #d8d2b8; margin-bottom: 10px; text-align: left; }
+  .card p.center { text-align: center; }
+  .card .keys { font-size: 14px; color: #8fd0ff; }
+  .card button { margin-top: 12px; font-family: inherit; font-size: 19px; letter-spacing: 2px;
+    background: #c9a227; color: #1a1206; border: none; border-radius: 8px;
+    padding: 12px 34px; cursor: pointer; }
+  .card button:hover { background: #ffd34d; }
+  #win-grade { font-size: 52px; color: #39ff88; letter-spacing: 6px; margin: 6px 0; }
+  #win-stats, #lose-stats { font-size: 17px; color: #f3e9c8; }
+  #lose-screen h1 { color: #ff6b6b; }
+  #title-screen { display: flex; }
+  #win-screen, #lose-screen { display: none; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.min.js" } }
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="tunnel-overlay"></div>
+
+<div id="hud-top" class="panel">
+  <div class="row gold" id="hud-items">◆ 0/3 Peti</div>
+  <div class="row" id="hud-time">00:00</div>
+  <div class="row" id="hud-coins">◉ Koin: 3</div>
+</div>
+<div id="hud-detect-box" class="panel">
+  <div class="label" id="hud-detect-label">tersembunyi</div>
+  <div id="hud-detect-bar"><div id="hud-detect"></div></div>
+  <div id="hud-tunnel">Terowongan dalam … dtk</div>
+</div>
+<div id="hud-guards" class="panel"></div>
+<div id="hud-banner"></div>
+<div id="hud-controls" class="panel">WASD gerak · Shift menyelinap · E interaksi · Q lempar koin · M suara · R ulangi</div>
+<div id="hud-prompt"></div>
+<div id="minimap-wrap" class="panel">
+  <div class="cap">PETA KERETA</div>
+  <canvas id="minimap" width="200" height="130"></canvas>
+</div>
+
+<div id="title-screen" class="screen">
+  <div class="card">
+    <h1>KERETA MALAM</h1>
+    <h2>— Curi 3 Peti Emas Gerbong demi Gerbong —</h2>
+    <p><b>GOAL:</b> Curi <b>Peti Mahkota</b> (gerbong A), <b>Peti Koin</b> (gerbong B), dan
+    <b>Peti Permata</b> (gerbong C), lalu kabur lewat <b>pintu EXIT hijau</b> di kabin masinis — tanpa terlihat.</p>
+    <p><b>WIN:</b> 3 peti + sampai EXIT. <b>LOSE:</b> tertangkap kondektur, anjing, atau masinis.</p>
+    <p><b>RAHASIA KERETA:</b> tiap ~20 detik kereta masuk <b>terowongan</b> — gelap total beberapa detik,
+    semua cone visi padam. Itulah saatmu bergerak! Kereta juga bergoyang pelan; pintu antar-gerbong dibuka dengan <b>E</b>.</p>
+    <p class="keys">WASD / panah — gerak &nbsp;·&nbsp; Shift — menyelinap &nbsp;·&nbsp; E — ambil / buka pintu &nbsp;·&nbsp; Q — lempar koin pengalih &nbsp;·&nbsp; M — suara</p>
+    <p class="center">Sembunyi di balik kursi, koper, tirai, dan gerobak makan — meter deteksi turun saat tak terlihat.</p>
+    <button id="btn-start">▶ NAIK KERETA</button>
+  </div>
+</div>
+
+<div id="win-screen" class="screen">
+  <div class="card">
+    <h1>KA-BUR! 🚂</h1>
+    <h2>Kau melompat dari kereta dengan 3 peti emas. Kondektur baru sadar saat kereta sampai stasiun.</h2>
+    <div id="win-grade">GRADE S</div>
+    <p class="center" id="win-stats"></p>
+    <button id="btn-again">↻ MAIN LAGI (R)</button>
+  </div>
+</div>
+
+<div id="lose-screen" class="screen">
+  <div class="card">
+    <h1>TERTANGKAP!</h1>
+    <h2>“Tiketnya, tolong…” — dan peti emas itu bukan milikmu.</h2>
+    <p class="center" id="lose-stats"></p>
+    <button id="btn-retry">↻ COBA LAGI (R)</button>
+  </div>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
